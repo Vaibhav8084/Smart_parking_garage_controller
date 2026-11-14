@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Parking Garage Controller | COA Logic Simulator</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body class="dark-theme">
+  <!-- Top Navigation & Status Bar -->
+  <header class="app-header">
+    <div class="brand">
+      <div class="chip-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="4" y="4" width="16" height="16" rx="2"/>
+          <path d="M9 9h6v6H9z"/>
+          <path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 15h3M1 9h3M1 15h3"/>
+        </svg>
+      </div>
+      <div>
+        <h1>Smart Parking Garage Controller</h1>
+        <p class="subtitle">Computer Organization & Architecture Project | 3-Bit Synchronous Datapath Simulator</p>
+      </div>
+    </div>
+
+    <div class="header-status">
+      <div class="totem-mini">
+        <span class="totem-label">AVAILABLE SPACES</span>
+        <span class="totem-value" id="headerSpacesCount">7</span>
+      </div>
+      <div class="status-pill" id="headerStatusPill">
+        <span class="indicator-dot green"></span>
+        <span id="headerStatusText">OPERATIONAL</span>
+      </div>
+      <button id="soundToggleBtn" class="btn-icon" title="Toggle Sound FX">
+        <svg id="soundIconOn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+          <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Container with Workspace Layout -->
+  <div class="app-layout">
+    <!-- Left Sidebar: Hardware Controls, Live Register & Gate Indicators -->
+    <aside class="control-sidebar">
+      <!-- Section: Virtual Hardware Controls -->
+      <section class="card control-panel">
+        <div class="card-header">
+          <h2>Virtual Hardware Inputs</h2>
+          <span class="badge">Tactile Sensors</span>
+        </div>
+        <div class="controls-grid">
+          <!-- Car In Button -->
+          <div class="control-box">
+            <label class="control-label">
+              <span class="key-tag">IN</span> Entry Sensor (SW1)
+            </label>
+            <button id="btnCarIn" class="btn-tactile btn-blue">
+              <span class="tactile-cap"></span>
+              <span class="btn-text">Car Enters Garage</span>
+            </button>
+            <span class="pin-hint">74HC74 &middot; Triggers Count Down</span>
+          </div>
+
+          <!-- Car Out Button -->
+          <div class="control-box">
+            <label class="control-label">
+              <span class="key-tag">OUT</span> Exit Sensor (SW2)
+            </label>
+            <button id="btnCarOut" class="btn-tactile btn-purple">
+              <span class="tactile-cap"></span>
+              <span class="btn-text">Car Leaves Garage</span>
+            </button>
+            <span class="pin-hint">74HC74 &middot; Triggers Count Up</span>
+          </div>
+
+          <!-- Simultaneous Entry/Exit Test -->
+          <div class="control-box full-width">
+            <button id="btnSimultaneous" class="btn-secondary btn-sm">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                <path d="M7 16V4M7 4L3 8M7 4L11 8M17 8V20M17 20L21 16M17 20L13 16"/>
+              </svg>
+              Simulate Simultaneous In + Out
+            </button>
+          </div>
+
+          <!-- Emergency Override Switch -->
+          <div class="control-box toggle-box full-width">
+            <div class="toggle-info">
+              <label class="control-label">Emergency Override (SW4)</label>
+              <span class="pin-hint">Bypasses full limits & forces gates open</span>
+            </div>
+            <label class="switch-spdt">
+              <input type="checkbox" id="switchEmergency">
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <!-- Reset Button -->
+          <div class="control-box full-width">
+            <div class="reset-row">
+              <button id="btnReset" class="btn-danger">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                  <path d="M23 4v6h-6M1 20v-6h6"/>
+                  <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                </svg>
+                System Preset / Reset (SW3)
+              </button>
+              <span class="pin-hint center">Active-Low Preset to $111_2$ (Empty: 7 spaces)</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section: Live Register & Bus Monitor -->
+      <section class="card register-panel">
+        <div class="card-header">
+          <h2>State Register Datapath</h2>
+          <span class="badge mono">BUS [S2..S0]</span>
+        </div>
+        <div class="register-display">
+          <div class="flipflop-block" id="ff2Block">
+            <span class="ff-name">FF2 (MSB)</span>
+            <div class="ff-output" id="valS2">1</div>
+            <div class="ff-sub">
+              <span>Q: <b id="q2Val">1</b></span>
+              <span>Q̄: <b id="qbar2Val">0</b></span>
+            </div>
+          </div>
+          <div class="flipflop-block" id="ff1Block">
+            <span class="ff-name">FF1</span>
+            <div class="ff-output" id="valS1">1</div>
+            <div class="ff-sub">
+              <span>Q: <b id="q1Val">1</b></span>
+              <span>Q̄: <b id="qbar1Val">0</b></span>
+            </div>
+          </div>
+          <div class="flipflop-block" id="ff0Block">
+            <span class="ff-name">FF0 (LSB)</span>
+            <div class="ff-output" id="valS0">1</div>
+            <div class="ff-sub">
+              <span>Q: <b id="q0Val">1</b></span>
+              <span>Q̄: <b id="qbar0Val">0</b></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="bus-metrics">
+          <div class="metric">
+            <span class="metric-label">Binary State</span>
+            <span class="metric-value mono" id="binaryStateVal">111₂</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Decimal Count</span>
+            <span class="metric-value mono" id="decimalCountVal">7</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Occupancy</span>
+            <span class="metric-value mono" id="occupancyVal">0 / 7</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section: Gate & Status Indicators -->
+      <section class="card indicators-panel">
+        <div class="card-header">
+          <h2>Gate & Flag Indicators</h2>
+          <span class="badge">LED Actuators</span>
+        </div>
+        <div class="led-grid">
+          <!-- Entry Gate LED -->
+          <div class="led-card">
+            <div class="led-indicator" id="ledEntryGate"></div>
+            <div class="led-meta">
+              <span class="led-title">Entry Gate (D1/D3)</span>
+              <span class="led-status" id="txtEntryGate">LOCKED (IDLE)</span>
+            </div>
+          </div>
+
+          <!-- Exit Gate LED -->
+          <div class="led-card">
+            <div class="led-indicator" id="ledExitGate"></div>
+            <div class="led-meta">
+              <span class="led-title">Exit Gate (D2/D4)</span>
+              <span class="led-status" id="txtExitGate">CLOSED (IDLE)</span>
+            </div>
+          </div>
+
+          <!-- Full Flag -->
+          <div class="led-card">
+            <div class="led-indicator red" id="ledFullFlag"></div>
+            <div class="led-meta">
+              <span class="led-title">FULL Flag (Zero Detect)</span>
+              <span class="led-status" id="txtFullFlag">LOW (Spaces Available)</span>
+            </div>
+          </div>
+
+          <!-- Empty Flag -->
+          <div class="led-card">
+            <div class="led-indicator green active" id="ledEmptyFlag"></div>
+            <div class="led-meta">
+              <span class="led-title">EMPTY Flag (Max Detect)</span>
+              <span class="led-status" id="txtEmptyFlag">HIGH (All 7 Empty)</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </aside>
+
+    <!-- Center/Right: Tabbed Main Interactive Canvas & Engineering Views -->
+    <main class="main-content">
+      <!-- Navigation Tabs -->
+      <nav class="nav-tabs">
+        <button class="tab-btn active" data-tab="tabGarage">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+            <rect x="2" y="3" width="20" height="14" rx="2"/>
+            <path d="M8 21h8M12 17v4"/>
+          </svg>
+          Interactive Garage
+        </button>
+        <button class="tab-btn" data-tab="tabBreadboard">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+            <rect x="2" y="2" width="20" height="20" rx="2"/>
+            <path d="M7 2v20M17 2v20M2 12h20"/>
+          </svg>
+          Virtual Breadboard & ICs
+        </button>
+        <button class="tab-btn" data-tab="tabSchematic">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+            <path d="M4 6h4l3 6 4-12 3 6h2"/>
+          </svg>
+          Logic Schematic & Probes
+        </button>
+        <button class="tab-btn" data-tab="tabStateTable">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+            <path d="M3 3h18v18H3zM3 9h18M3 15h18M9 3v18M15 3v18"/>
+          </svg>
+          State Table & FSM
+        </button>
+        <button class="tab-btn" data-tab="tabWaveform">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+            <path d="M2 12h5l2-8 4 16 3-8h6"/>
+          </svg>
+          Logic Analyzer (Waveform)
+        </button>
+        <button class="tab-btn" data-tab="tabCOA">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 16v-4M12 8h.01"/>
+          </svg>
+          COA Architecture Mapping
+        </button>
+        <button class="tab-btn" data-tab="tabTestSuite">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+            <path d="M9 11l3 3L22 4"/>
+            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+          </svg>
+          Automated Test Suite
+        </button>
+      </nav>
+
+      <!-- TAB 1: Animated Interactive Garage -->
+      <section class="tab-pane active" id="tabGarage">
+        <div class="view-header">
+          <div>
+            <h3>Parking Facility Physical Simulation</h3>
+            <p>Real-time physical representation controlled directly by the digital logic datapath.</p>
+          </div>
+          <div class="view-actions">
+            <button id="btnAutoTraffic" class="btn-outline">
+              <span class="play-icon">▶</span> Auto-Traffic Simulation
+            </button>
+            <button id="btnClearGarage" class="btn-outline">Empty All Spots</button>
+          </div>
+        </div>
+
+        <div class="garage-viewport">
+          <!-- 7-Segment Physical Totem Pole Display -->
+          <div class="entrance-totem">
+            <div class="totem-roof">PARKING ENTRANCE</div>
+            <div class="seven-segment-housing">
+              <div class="seven-segment" id="mainSevenSegment">
+                <div class="seg seg-a"></div>
+                <div class="seg seg-b"></div>
+                <div class="seg seg-c"></div>
+                <div class="seg seg-d"></div>
+                <div class="seg seg-e"></div>
+                <div class="seg seg-f"></div>
+                <div class="seg seg-g"></div>
+              </div>
+              <div class="totem-caption">SPACES AVAILABLE</div>
+            </div>
+            <div class="totem-banner" id="totemBanner">WELCOME</div>
+          </div>
+
+          <!-- 2D Canvas for Garage Parking Lots & Cars -->
+          <div class="canvas-container">
+            <canvas id="garageCanvas" width="850" height="480"></canvas>
+          </div>
+        </div>
+
+        <div class="garage-telemetry">
+          <div class="telemetry-item">
+            <span class="label">Entry Gate Barrier Arm:</span>
+            <span class="val mono" id="teleEntryGate">DOWN (0°)</span>
+          </div>
+          <div class="telemetry-item">
+            <span class="label">Exit Gate Barrier Arm:</span>
+            <span class="val mono" id="teleExitGate">DOWN (0°)</span>
+          </div>
+          <div class="telemetry-item">
+            <span class="label">Traffic Sensor Pulse ($P_{DN}$):</span>
+            <span class="val mono" id="telePulseDn">0 (LOW)</span>
+          </div>
+          <div class="telemetry-item">
+            <span class="label">Traffic Sensor Pulse ($P_{UP}$):</span>
+            <span class="val mono" id="telePulseUp">0 (LOW)</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: Virtual Breadboard & ICs -->
+      <section class="tab-pane" id="tabBreadboard">
+        <div class="view-header">
+          <div>
+            <h3>Dual Breadboard Virtual Wiring Layout</h3>
+            <p>Built with standard 74HC logic ICs, CD4511 decoder, and live signal voltage probes.</p>
+          </div>
+          <div class="view-actions">
+            <span class="signal-legend">
+              <span class="dot high"></span> 5V HIGH (Logic 1)
+              <span class="dot low"></span> 0V LOW (Logic 0)
+              <span class="dot vcc"></span> Power VCC
+              <span class="dot gnd"></span> Ground
+            </span>
+          </div>
+        </div>
+
+        <div class="breadboard-container">
+          <div class="breadboard-scroll" id="breadboardCanvasContainer">
+            <!-- Dynamic SVG / Interactive Canvas for Breadboard -->
+            <canvas id="breadboardCanvas" width="1180" height="640"></canvas>
+          </div>
+        </div>
+
+        <div class="ic-pin-inspector" id="icPinInspector">
+          <div class="inspector-chip">
+            <span class="chip-title">ACTIVE IC PIN INSPECTION</span>
+            <span class="chip-desc">Hover over any IC pin or breadboard node to view its net name, function, and voltage.</span>
+          </div>
+          <div class="inspector-details" id="inspectorContent">
+            Hover over a component pin...
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 3: Logic Schematic & Probes -->
+      <section class="tab-pane" id="tabSchematic">
+        <div class="view-header">
+          <div>
+            <h3>Digital Logic Schematic (Gate-Level Datapath)</h3>
+            <p>Real-time logic signal propagation through inverters, AND/OR steering gates, flip-flops, and CD4511 decoder.</p>
+          </div>
+        </div>
+        <div class="schematic-container">
+          <canvas id="schematicCanvas" width="980" height="540"></canvas>
+        </div>
+        <div class="schematic-toolbar">
+          <div class="probe-info">
+            <span>Probe Status: <b id="probeStatus">Active Live Propagation Mode</b></span>
+          </div>
+          <div class="formula-box">
+            <code>FULL = S̄2 &middot; S̄1 &middot; S̄0</code> | 
+            <code>EMPTY = S2 &middot; S1 &middot; S0</code> | 
+            <code>GATE_EN = (IN &middot; FULL̄) + EMERG</code>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 4: State Table & FSM Graph -->
+      <section class="tab-pane" id="tabStateTable">
+        <div class="view-header">
+          <div>
+            <h3>Finite State Machine (FSM) & Transition Truth Table</h3>
+            <p>The highlighted row indicates the current hardware state of register $(S_2, S_1, S_0)$.</p>
+          </div>
+        </div>
+
+        <div class="fsm-grid">
+          <!-- State Bubble Diagram -->
+          <div class="card fsm-card">
+            <h4>State Transition Diagram</h4>
+            <div class="fsm-diagram-wrapper">
+              <canvas id="fsmCanvas" width="460" height="380"></canvas>
+            </div>
+            <p class="fsm-note">Circles represent available spaces ($0\dots 7$). Blue transitions occur on Entry ($P_{DN}$); Green transitions occur on Exit ($P_{UP}$).</p>
+          </div>
+
+          <!-- Dynamic Truth Table -->
+          <div class="card table-card">
+            <h4>Synchronous State Excitation & Output Table</h4>
+            <div class="table-responsive">
+              <table class="logic-table" id="stateTable">
+                <thead>
+                  <tr>
+                    <th>Dec</th>
+                    <th>State (S2 S1 S0)</th>
+                    <th>FULL</th>
+                    <th>EMPTY</th>
+                    <th>Next on Entry</th>
+                    <th>Next on Exit</th>
+                    <th>CD4511 (a-g)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr data-state="0">
+                    <td class="mono">0</td>
+                    <td class="mono">000₂</td>
+                    <td><span class="tag red">1 (Active)</span></td>
+                    <td><span class="tag">0</span></td>
+                    <td class="mono">000₂ (Inhibited)</td>
+                    <td class="mono">001₂ (+1)</td>
+                    <td class="mono">1111110 (0)</td>
+                  </tr>
+                  <tr data-state="1">
+                    <td class="mono">1</td>
+                    <td class="mono">001₂</td>
+                    <td><span class="tag">0</span></td>
+                    <td><span class="tag">0</span></td>
+                    <td class="mono">000₂ (-1)</td>
+                    <td class="mono">010₂ (+1)</td>
+                    <td class="mono">0110000 (1)</td>
+                  </tr>
+                  <tr data-state="2">
+                    <td class="mono">2</td>
+                    <td class="mono">010₂</td>
+                    <td><span class="tag">0</span></td>
+                    <td><span class="tag">0</span></td>
+                    <td class="mono">001₂ (-1)</td>
+                    <td class="mono">011₂ (+1)</td>
+                    <td class="mono">1101101 (2)</td>
+                  </tr>
+                  <tr data-state="3">
+                    <td class="mono">3</td>
+                    <td class="mono">011₂</td>
+                    <td><span class="tag">0</span></td>
+                    <td><span class="tag">0</span></td>
+                    <td class="mono">010₂ (-1)</td>
+                    <td class="mono">100₂ (+1)</td>
+                    <td class="mono">1111001 (3)</td>
+                  </tr>
+                  <tr data-state="4">
+                    <td class="mono">4</td>
+                    <td class="mono">100₂</td>
+                    <td><span class="tag">0</span></td>
+                    <td><span class="tag">0</span></td>
+                    <td class="mono">011₂ (-1)</td>
+                    <td class="mono">101₂ (+1)</td>
+                    <td class="mono">0110011 (4)</td>
+                  </tr>
+                  <tr data-state="5">
+                    <td class="mono">5</td>
+                    <td class="mono">101₂</td>
+                    <td><span class="tag">0</span></td>
+                    <td><span class="tag">0</span></td>
+                    <td class="mono">100₂ (-1)</td>
+                    <td class="mono">110₂ (+1)</td>
+                    <td class="mono">1011011 (5)</td>
+                  </tr>
+                  <tr data-state="6">
+                    <td class="mono">6</td>
+                    <td class="mono">110₂</td>
+                    <td><span class="tag">0</span></td>
+                    <td><span class="tag">0</span></td>
+                    <td class="mono">101₂ (-1)</td>
+                    <td class="mono">111₂ (+1)</td>
+                    <td class="mono">1011111 (6)</td>
+                  </tr>
+                  <tr data-state="7">
+                    <td class="mono">7</td>
+                    <td class="mono">111₂</td>
+                    <td><span class="tag">0</span></td>
+                    <td><span class="tag green">1 (Active)</span></td>
+                    <td class="mono">110₂ (-1)</td>
+                    <td class="mono">111₂ (Inhibited)</td>
+                    <td class="mono">1110000 (7)</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 5: Logic Analyzer / Timing Waveform -->
+      <section class="tab-pane" id="tabWaveform">
+        <div class="view-header">
+          <div>
+            <h3>Digital Logic Analyzer (Live Waveform Capture)</h3>
+            <p>Traces digital clock pulses, register state lines, and gate signals in real-time as you operate switches.</p>
+          </div>
+          <div class="view-actions">
+            <button id="btnWaveClear" class="btn-outline">Clear Waveform</button>
+            <button id="btnWavePause" class="btn-outline">Pause Trace</button>
+          </div>
+        </div>
+
+        <div class="waveform-container">
+          <canvas id="waveformCanvas" width="980" height="420"></canvas>
+        </div>
+        <div class="waveform-legend">
+          <span class="ch ch-in">CH1: IN_SW</span>
+          <span class="ch ch-out">CH2: OUT_SW</span>
+          <span class="ch ch-clk">CH3: COUNT_CLK</span>
+          <span class="ch ch-s0">CH4: S0 (LSB)</span>
+          <span class="ch ch-s1">CH5: S1</span>
+          <span class="ch ch-s2">CH6: S2 (MSB)</span>
+          <span class="ch ch-full">CH7: FULL_FLAG</span>
+          <span class="ch ch-gate">CH8: ENTRY_GATE</span>
+        </div>
+      </section>
+
+      <!-- TAB 6: COA Architecture Mapping -->
+      <section class="tab-pane" id="tabCOA">
+        <div class="view-header">
+          <div>
+            <h3>Computer Organization & Architecture (COA) Educational Analysis</h3>
+            <p>Detailed mapping between this parking controller and general-purpose microprocessors.</p>
+          </div>
+        </div>
+
+        <div class="coa-grid">
+          <div class="card coa-card">
+            <div class="coa-badge">SUBSYSTEM 1</div>
+            <h4>Program Counter & Accumulator Register</h4>
+            <p>In a CPU, the <strong>Program Counter (PC)</strong> or <strong>Accumulator</strong> holds the current execution address or operand. In this controller, the 3-bit flip-flop cluster ($S_2, S_1, S_0$) functions as the central architectural state register, storing the system status across discrete clock cycles.</p>
+            <div class="coa-comparison">
+              <div><span>CPU Parallel:</span> <code>PC &larr; PC + 1</code> / <code>ACC &larr; ACC - 1</code></div>
+              <div><span>Circuit:</span> Synchronous D-flip-flop excitation via $T$-toggle equations.</div>
+            </div>
+          </div>
+
+          <div class="card coa-card">
+            <div class="coa-badge">SUBSYSTEM 2</div>
+            <h4>ALU Datapath & Micro-Operations</h4>
+            <p>The Arithmetic Logic Unit (ALU) performs elementary micro-operations like increment, decrement, and transfer. Here, the steering network and XOR excitation logic form a hardwired incrementer/decrementer datapath with zero software overhead.</p>
+            <div class="coa-comparison">
+              <div><span>CPU Parallel:</span> Micro-op <code>INC</code> (Car Out) / <code>DEC</code> (Car In)</div>
+              <div><span>Circuit:</span> 74HC86 XOR gates computing next state $D = Q \oplus T$.</div>
+            </div>
+          </div>
+
+          <div class="card coa-card">
+            <div class="coa-badge">SUBSYSTEM 3</div>
+            <h4>Status Flags & Condition Codes</h4>
+            <p>Microprocessors use a Status/Flags Register (EFLAGS: Zero, Sign, Overflow, Carry) to enable conditional branching (<code>JZ</code>, <code>JNE</code>). In this circuit, the <code>FULL</code> detector ($000_2$) is a direct physical implementation of a <strong>Zero Flag</strong>, while <code>EMPTY</code> ($111_2$) represents an <strong>Overflow/Boundary Flag</strong>.</p>
+            <div class="coa-comparison">
+              <div><span>CPU Parallel:</span> <code>JZ FULL_HANDLER</code> (Bypass if $Z=1$)</div>
+              <div><span>Circuit:</span> Active-High $\overline{\text{FULL}}$ signal gates the clock pulse $P_{DN}$.</div>
+            </div>
+          </div>
+
+          <div class="card coa-card">
+            <div class="coa-badge">SUBSYSTEM 4</div>
+            <h4>Hardwired Control Unit vs Microcode</h4>
+            <p>Unlike microcoded processors that read ROM words, this controller uses a <strong>hardwired control unit</strong> built from combinational logic gates (AND, OR, NOT). It decodes inputs, flags, and emergency overrides in a single propagation delay step.</p>
+            <div class="coa-comparison">
+              <div><span>CPU Parallel:</span> Hardwired Control Matrix (RISC-style control)</div>
+              <div><span>Circuit:</span> 74HC08 and 74HC32 gating logic yielding instant responses.</div>
+            </div>
+          </div>
+
+          <div class="card coa-card full-width">
+            <div class="coa-badge">SUBSYSTEM 5</div>
+            <h4>Memory-Mapped I/O & Bus Decoders</h4>
+            <p>The 3-bit internal bus ($S_2, S_1, S_0$) links the state register directly to the <strong>CD4511 BCD decoder</strong>. This models how a memory bus connects the CPU data bus to an output peripheral latch or display interface via address decoding.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 7: Automated Test Suite -->
+      <section class="tab-pane" id="tabTestSuite">
+        <div class="view-header">
+          <div>
+            <h3>Automated Verification & Test Harness</h3>
+            <p>Execute verified test scenarios to benchmark circuit behavior against formal specifications.</p>
+          </div>
+          <div class="view-actions">
+            <button id="btnRunAllTests" class="btn-primary">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <polygon points="5 3 19 12 5 21 5 3"/>
+              </svg>
+              Run All 7 Test Cases
+            </button>
+          </div>
+        </div>
+
+        <div class="test-suite-layout">
+          <div class="test-cards-list" id="testCasesContainer">
+            <!-- Test cases populated dynamically -->
+          </div>
+
+          <div class="test-console card">
+            <div class="card-header">
+              <h4>Execution Log & Output Assertions</h4>
+              <button id="btnClearTestLog" class="btn-sm btn-outline">Clear Log</button>
+            </div>
+            <div class="console-body mono" id="testConsoleLog">
+              [SYSTEM] Automated Test Harness loaded.<br>
+              [READY] Click "Run All 7 Test Cases" or test individual scenarios to verify datapath.
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Audio elements & Scripts -->
+  <script src="components/audio.js"></script>
+  <script src="components/garage-view.js"></script>
+  <script src="components/breadboard-view.js"></script>
+  <script src="components/schematic-view.js"></script>
+  <script src="components/fsm-view.js"></script>
+  <script src="components/waveform-view.js"></script>
+  <script src="components/test-suite.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
