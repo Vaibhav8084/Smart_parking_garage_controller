@@ -3,9 +3,6 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-const PORT = process.env.PORT || 3000;
-const BASE_DIR = __dirname;
-
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
@@ -17,13 +14,13 @@ const MIME_TYPES = {
   '.ico': 'image/x-icon'
 };
 
-const server = http.createServer((req, res) => {
+function handler(req, res) {
   let reqPath = decodeURI(req.url.split('?')[0]);
   if (reqPath === '/' || reqPath === '') {
     reqPath = '/index.html';
   }
 
-  const filePath = path.join(BASE_DIR, reqPath);
+  const filePath = path.join(__dirname, reqPath);
   const ext = path.extname(filePath).toLowerCase();
   const contentType = MIME_TYPES[ext] || 'application/octet-stream';
 
@@ -41,12 +38,18 @@ const server = http.createServer((req, res) => {
       res.end(content);
     }
   });
-});
+}
 
-server.listen(PORT, () => {
-  console.log(`\n============================================================`);
-  console.log(`🚗 Smart Parking Garage Controller Simulation Running!`);
-  console.log(`📡 Local URL: http://localhost:${PORT}`);
-  console.log(`💻 COA Digital Logic Simulator & Virtual Breadboard`);
-  console.log(`============================================================\n`);
-});
+if (require.main === module) {
+  const PORT = process.env.PORT || 3000;
+  const server = http.createServer(handler);
+  server.listen(PORT, () => {
+    console.log(`\n============================================================`);
+    console.log(`🚗 Smart Parking Garage Controller Simulation Running!`);
+    console.log(`📡 Local URL: http://localhost:${PORT}`);
+    console.log(`💻 COA Digital Logic Simulator & Virtual Breadboard`);
+    console.log(`============================================================\n`);
+  });
+}
+
+module.exports = handler;

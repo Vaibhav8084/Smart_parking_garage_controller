@@ -69,9 +69,12 @@ Simply open `index.html` in any modern web browser (Chrome, Edge, Firefox, Safar
 ### Option 2: Run via Node.js
 From the project folder:
 ```bash
-node server.js
+node local-server.js
 ```
 Then open: [http://localhost:3000](http://localhost:3000)
+
+### Option 3: Deploy to Vercel (or GitHub Pages / Netlify)
+Push the repository to GitHub and import it on Vercel. Vercel automatically deploys it as a fast, zero-config static site!
 
 ---
 
