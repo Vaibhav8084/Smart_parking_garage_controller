@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Smart Parking Garage Controller - Digital Logic & Computer Organization and Architecture (COA) Real-Time Simulator",
   "scripts": {
+    "build": "node -e \"console.log('Static build ready')\"",
     "start": "node local-server.js"
   },
   "keywords": [
