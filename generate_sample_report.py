@@ -1,4 +1,4 @@
-# Python script to generate the LLT1 Course Report in exact sample format
+# Python script to generate the LLT1 Course Report matching sample format with real project screenshots
 import os
 import docx
 from docx.shared import Inches, Pt, RGBColor
@@ -6,7 +6,6 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.table import WD_TABLE_ALIGNMENT, WD_ALIGN_VERTICAL
 from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import nsdecls, qn
-from PIL import Image
 
 def generate_report():
     doc = docx.Document()
@@ -96,7 +95,24 @@ def generate_report():
         run.font.name = 'Consolas'
         run.font.size = Pt(9)
         run.font.color.rgb = RGBColor(15, 23, 42)
-        doc.add_paragraph() # Spacing
+        doc.add_paragraph()
+
+    # Helper: Add Figure with Caption
+    def add_figure(img_path, caption, width=Inches(6.2)):
+        if os.path.exists(img_path):
+            p_img = doc.add_paragraph()
+            p_img.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            p_img.paragraph_format.space_before = Pt(6)
+            p_img.paragraph_format.space_after = Pt(2)
+            p_img.add_run().add_picture(img_path, width=width)
+
+            p_cap = doc.add_paragraph()
+            p_cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            p_cap.paragraph_format.space_after = Pt(12)
+            run_cap = p_cap.add_run(caption)
+            run_cap.font.size = Pt(9.5)
+            run_cap.font.italic = True
+            run_cap.font.color.rgb = COLOR_MUTED
 
     # -------------------------------------------------------------
     # 1. INSTITUTION HEADER (Exactly matching sample)
@@ -148,7 +164,7 @@ def generate_report():
                     "Faculty of Engineering and Technology\n"
                     "SRM Institute of Science and Technology")
 
-    doc.add_paragraph() # Spacing
+    doc.add_paragraph()
 
     # -------------------------------------------------------------
     # 4. SRM LOGO IMAGE
@@ -205,10 +221,10 @@ def generate_report():
         p_f.add_run(b_title).bold = True
         p_f.add_run(b_desc)
 
-    doc.add_paragraph() # Spacing
+    doc.add_paragraph()
 
     # -------------------------------------------------------------
-    # 6. PROBLEM STATEMENTS TABLE (Exact sample table format)
+    # 6. PROBLEM STATEMENTS TABLE
     # -------------------------------------------------------------
     p_ps = doc.add_paragraph()
     p_ps.paragraph_format.space_before = Pt(8)
@@ -248,10 +264,10 @@ def generate_report():
         "Automated Entry/Exit Barrier Gate Actuation, Emergency Evacuation Override, and Simultaneous Entry/Exit Event Hazard Filtering."
     )
 
-    doc.add_paragraph() # Spacing
+    doc.add_paragraph()
 
     # -------------------------------------------------------------
-    # 7. GROUP MEMBERS TABLE (Exact sample table format)
+    # 7. GROUP MEMBERS TABLE
     # -------------------------------------------------------------
     p_gm = doc.add_paragraph()
     p_gm.paragraph_format.space_before = Pt(6)
@@ -369,9 +385,9 @@ def generate_report():
             r = p_cell.add_run(text)
             r.font.size = Pt(8.5)
 
-    doc.add_paragraph() # Spacing
+    doc.add_paragraph()
 
-    # Structural Verilog HDL Code (matching how assembly was provided in sample)
+    # Structural Verilog HDL Code
     p_prog1_head = doc.add_paragraph()
     p_prog1_head.paragraph_format.space_before = Pt(6)
     p_prog1_head.paragraph_format.space_after = Pt(4)
@@ -427,7 +443,7 @@ module parking_counter_datapath (
 endmodule"""
     add_code_block(verilog_code1)
 
-    # Output Section
+    # Output Section with Real Screenshots!
     p_out1_head = doc.add_paragraph()
     p_out1_head.paragraph_format.space_before = Pt(6)
     p_out1_head.paragraph_format.space_after = Pt(4)
@@ -435,18 +451,20 @@ endmodule"""
 
     p_out1_desc = doc.add_paragraph()
     p_out1_desc.add_run(
-        "The synchronous counter was simulated across continuous sequential entry pulses (decrementing from 7 to 0) "
-        "and exit pulses (incrementing from 0 to 7). The CD4511 successfully drove the Common-Cathode display segments "
-        "without glitching or intermediate race conditions. The screenshot below illustrates the active simulator state "
-        "at full capacity (0 spaces available, S = 000_2, FULL condition code asserted)."
+        "The synchronous counter datapath and 7-segment display subsystem were verified across sequential entry and exit cycles. "
+        "As seen in Figure 1, three cars entered the garage, successfully parking in Bay 01, Bay 02, and Bay 03. "
+        "The state register automatically decremented from 111_2 to 100_2 (Decimal 4), and the CD4511 decoder drove the entrance "
+        "totem display to cleanly illuminate '4' available spaces. Figure 2 shows the corresponding virtual breadboard layout "
+        "with 74HC ICs, power rails, and bus wiring."
     )
 
-    screenshot1 = r"C:\Users\vaibh\.gemini\antigravity\brain\decb4333-ac0a-4113-b7b5-df8a208fcb15\browser_evidence\1601c2ec-3b19-4a86-8e52-d38f733d02ef\final_step_12.png"
-    if os.path.exists(screenshot1):
-        p_img1 = doc.add_paragraph()
-        p_img1.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        p_img1.paragraph_format.space_after = Pt(12)
-        p_img1.add_run().add_picture(screenshot1, width=Inches(6.2))
+    # Embed Figure 1: Interactive Garage
+    fig1_path = r"C:\Users\vaibh\.gemini\antigravity\scratch\smart-parking-garage\report_images\fig1_interactive_garage.png"
+    add_figure(fig1_path, "Figure 1: Real-time simulation of the 3-bit synchronous counter datapath and parking facility, showing 3 cars parked, state register S = [1, 0, 0] (Decimal 4 available spaces), and the CD4511-driven 7-segment entrance totem display indicating '4'.", width=Inches(6.3))
+
+    # Embed Figure 2: Virtual Breadboard
+    fig2_path = r"C:\Users\vaibh\.gemini\antigravity\scratch\smart-parking-garage\report_images\fig2_virtual_breadboard.png"
+    add_figure(fig2_path, "Figure 2: Virtual dual breadboard wiring layout showing the 74HC74 dual flip-flop registers (U2, U3), 74HC08 AND gate (U4), 74HC32 OR gate (U5), 74HC04 inverter (U6), power distribution rails, and signal lines.", width=Inches(6.0))
 
     doc.add_page_break()
 
@@ -535,7 +553,7 @@ module parking_control_unit (
 endmodule"""
     add_code_block(verilog_code2)
 
-    # Output Section
+    # Output Section with Real Screenshot!
     p_out2_head = doc.add_paragraph()
     p_out2_head.paragraph_format.space_before = Pt(6)
     p_out2_head.paragraph_format.space_after = Pt(4)
@@ -545,15 +563,13 @@ endmodule"""
     p_out2_desc.add_run(
         "The control unit was verified under comprehensive test scenarios including blocked entry attempts when full, "
         "simultaneous entry and exit triggers, and emergency override activation. The automated verification harness "
-        "executed all 7 formal test assertions with 100% pass rates, as captured in the execution screenshot below."
+        "executed all 7 formal test assertions with 100% pass rates, as captured in Figure 3. The execution log confirms "
+        "proper assertion of status flags and gate inhibits."
     )
 
-    screenshot2 = r"C:\Users\vaibh\.gemini\antigravity\brain\decb4333-ac0a-4113-b7b5-df8a208fcb15\browser_evidence\1976507e-52dc-4c80-9ff4-c8e0eb309c34\final_step_32.png"
-    if os.path.exists(screenshot2):
-        p_img2 = doc.add_paragraph()
-        p_img2.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        p_img2.paragraph_format.space_after = Pt(12)
-        p_img2.add_run().add_picture(screenshot2, width=Inches(6.2))
+    # Embed Figure 3: Automated Test Suite Screenshot
+    fig3_path = r"C:\Users\vaibh\.gemini\antigravity\scratch\smart-parking-garage\report_images\fig3_automated_tests.png"
+    add_figure(fig3_path, "Figure 3: Automated hardware verification harness and execution log asserting 100% pass rate across boundary conditions, full-capacity entry blocking, simultaneous event hazard filtering, and emergency override.", width=Inches(6.2))
 
     doc.add_page_break()
 
@@ -602,7 +618,7 @@ endmodule"""
             r = p_cell.add_run(text)
             r.font.size = Pt(8.5)
 
-    doc.add_paragraph() # Spacing
+    doc.add_paragraph()
 
     p_viva_head = doc.add_paragraph()
     p_viva_head.paragraph_format.space_before = Pt(8)
